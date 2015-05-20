@@ -202,7 +202,7 @@ func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 
 	// verify that line comment regexp exists for current language
 	if lang.lCom != "" {
-		if idx := c.lcReg.FindStringIndex(line); idx != nil {
+		if idx := c.lcReg.FindStringIndex(line); len(idx) > 0 {
 			if idx[0] == 0 {
 				// at the start of the line
 				cnt.LineCom += 1
@@ -226,6 +226,9 @@ func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 			}
 			// block comment at the start of the line
 			cnt.BlockCom += 1
+			return
+		}
+		if len(idxs) > 0 {
 			return
 		}
 	}

@@ -25,13 +25,13 @@ package counter
 
 import (
 	"bufio"
-	//"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
-	//"time"
 )
+
+var extRegexp = regexp.MustCompile(`\.[^.]*$`)
 
 // the Count struct contains all the total counts for each line type
 type Count struct {
@@ -47,6 +47,7 @@ type Count struct {
 // the Counter struct contains the count map and the regexp to find file
 // extensions
 type Counter struct {
+
 	// Cnt is a map with language names as keys and Count objects as values
 	Cnt map[string]*Count
 	// DepthFirst indicates whether the file system should be visited using
@@ -60,6 +61,7 @@ type Counter struct {
 	FilterDir *regexp.Regexp
 	// Regexp to exclude all directories that match
 	ExcludeDir *regexp.Regexp
+
 	// internal variables
 	extReg    *regexp.Regexp
 	inComment bool
@@ -73,7 +75,6 @@ func NewCounter() *Counter {
 	return &Counter{
 		Cnt:        make(map[string]*Count),
 		DepthFirst: true,
-		extReg:     regexp.MustCompile(`\.[^.]*$`),
 		inComment:  false,
 	}
 }
@@ -115,7 +116,7 @@ func (c *Counter) ScanDir(d string) error {
 			continue
 		}
 		// filter only recogized file types
-		if lang := LANGS[strings.ToLower(c.extReg.FindString(name))]; lang != nil {
+		if lang := LANGS[strings.ToLower(extRegexp.FindString(name))]; lang != nil {
 			files[d+"/"+name] = lang
 		}
 	}
@@ -153,26 +154,18 @@ func (c *Counter) ScanFile(path string, lang *Language) error {
 	}
 	defer f.Close()
 
-	// initialize scanner for file; scan by lines
-	s := bufio.NewScanner(f)
-	s.Split(bufio.ScanLines)
-
-	// set up counter for current file
-	cnt := new(Count)
-	c.inComment = false
-	c.lcReg = regexp.MustCompile(lang.lCom)
-	c.bcsReg = regexp.MustCompile(lang.bComS)
-	c.bceReg = regexp.MustCompile(lang.bComE)
+	// initialize fileScanner
+	fs := newFileScanner(f, lang)
 
 	// scan through each line in the file
-	for s.Scan() {
-		c.countLine(s, cnt, lang)
+	for fs.scanner.Scan() {
+		fs.countLine()
 	}
-	c.countLine(s, cnt, lang)
+	fs.countLine()
 	// check for error here?
 
 	// add count to main counter
-	c.addCount(cnt, lang)
+	c.addCount(fs.cnt, fs.lang)
 
 	return nil
 }
@@ -197,70 +190,6 @@ func (c *Counter) scanAllFiles(files map[string]*Language) error {
 	return nil
 }
 
-// count a line under the appropriate count type
-// takes pointers to the scanner and Count struct as parameters
-func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
-
-	// inc total count
-	cnt.Total += 1
-
-	// if inside a block comment
-	if c.inComment {
-		cnt.BlockCom += 1
-		if c.stillInBlockComment(s.Text()) {
-			return
-		}
-		c.inComment = false
-		return
-	}
-
-	// remove leading/trailing whitespace
-	line := strings.TrimSpace(s.Text())
-
-	// check if empty line
-	if line == "" {
-		cnt.Empty += 1
-		return
-	}
-
-	// if line comment regexp exists, check if in the current line
-	if lang.lCom != "" {
-		if idx := c.lcReg.FindStringIndex(line); len(idx) > 0 {
-			if idx[0] == 0 {
-				// comment is at the start of the line
-				cnt.LineCom += 1
-				return
-			}
-			// comment is after some code
-			cnt.Mix += 1
-			return
-		}
-	}
-
-	// if block comment regexp exists, check if in the current line
-	if lang.bComS != "" && lang.bComE != "" {
-		idxs := c.bcsReg.FindAllStringIndex(line, -1)
-		// check if starting block commment
-		if c.inBlockComment(idxs, line, cnt) {
-			if idxs[0][0] != 0 {
-				// block comment starts after some code; mixed line
-				cnt.Mix += 1
-				return
-			}
-			// block comment at the start of the line
-			cnt.BlockCom += 1
-			return
-		}
-		// check if block comment started and ended on the same line
-		if len(idxs) > 0 {
-			return
-		}
-	}
-
-	// is a line of code; repeat
-	cnt.Code += 1
-}
-
 // add a count item to the total count for the specified language
 func (c *Counter) addCount(cnt *Count, lang *Language) {
 	if tCnt := c.Cnt[lang.Name]; tCnt != nil {
@@ -278,41 +207,130 @@ func (c *Counter) addCount(cnt *Count, lang *Language) {
 
 }
 
-// takes slices of the end block comment(s) and the start block comment(s) in
-// the current line; returns true if still in block comment, false otherwise
-func (c *Counter) stillInBlockComment(line string) bool {
-	idxe := c.bceReg.FindAllStringIndex(line, -1)
+type fileScanner struct {
+	scanner   *bufio.Scanner
+	cnt       *Count
+	lang      *Language
+	inComment bool
+	curLine   string
+	lineCom   *regexp.Regexp
+	blockComS *regexp.Regexp
+	blockComE *regexp.Regexp
+}
+
+func newFileScanner(f *os.File, l *Language) *fileScanner {
+	s := bufio.NewScanner(f)
+	s.Split(bufio.ScanLines)
+	return &fileScanner{
+		scanner:   s,
+		cnt:       new(Count),
+		lang:      l,
+		inComment: false,
+		lineCom:   regexp.MustCompile(l.lCom),
+		blockComS: regexp.MustCompile(l.bComS),
+		blockComE: regexp.MustCompile(l.bComE),
+	}
+}
+
+// count a line under the appropriate count type
+// takes pointers to the scanner and Count struct as parameters
+func (fs *fileScanner) countLine() {
+
+	// inc total count
+	fs.cnt.Total += 1
+	// assign current line with leading and trailing spaces removed
+	fs.curLine = strings.TrimSpace(fs.scanner.Text())
+
+	// if inside a block comment
+	if fs.inComment {
+		fs.cnt.BlockCom += 1
+		if fs.stillInBlockComment() {
+			return
+		}
+		fs.inComment = false
+		return
+	}
+
+	// check if empty line
+	if fs.curLine == "" {
+		fs.cnt.Empty += 1
+		return
+	}
+
+	// if line comment regexp exists, check if in the current line
+	if fs.lang.lCom != "" {
+		if idx := fs.lineCom.FindStringIndex(fs.curLine); len(idx) > 0 {
+			if idx[0] == 0 {
+				// comment is at the start of the line
+				fs.cnt.LineCom += 1
+				return
+			}
+			// comment is after some code
+			fs.cnt.Mix += 1
+			return
+		}
+	}
+
+	// if block comment regexp exists, check if in the current line
+	if fs.lang.bComS != "" && fs.lang.bComE != "" {
+		idxs := fs.blockComS.FindAllStringIndex(fs.curLine, -1)
+		// check if starting block commment
+		if fs.inBlockComment(idxs) {
+			if idxs[0][0] != 0 {
+				// block comment starts after some code; mixed line
+				fs.cnt.Mix += 1
+				return
+			}
+			// block comment at the start of the line
+			fs.cnt.BlockCom += 1
+			return
+		}
+		// check if block comment started and ended on the same line
+		if len(idxs) > 0 {
+			return
+		}
+	}
+
+	// is a line of code; repeat
+	fs.cnt.Code += 1
+}
+
+// takes the current line as a string
+// returns true if still in block comment, false otherwise
+func (fs *fileScanner) stillInBlockComment() bool {
+	idxe := fs.blockComE.FindAllStringIndex(fs.curLine, -1)
 	if len(idxe) == 0 {
 		return true
 	}
-	idxs := c.bcsReg.FindAllStringIndex(line, -1)
+	idxs := fs.blockComS.FindAllStringIndex(fs.curLine, -1)
 	if len(idxs) == 0 {
 		return false
 	}
 	return idxe[len(idxe)-1][0] < idxs[len(idxs)-1][0]
 }
 
-// takes slices of the end block comment(s) and the start block comment(s) in
-// the current line; returns true if starting a block comment, false otherwise
-func (c *Counter) inBlockComment(idxs [][]int, line string, cnt *Count) bool {
+// takes slices of the start block comment(s) in the current line, and the
+// current line as a string;
+// returns true if starting a block comment, false otherwise
+func (fs *fileScanner) inBlockComment(idxs [][]int) bool {
 	if len(idxs) == 0 {
 		return false
 	}
-	idxe := c.bceReg.FindAllStringIndex(line, -1)
+	idxe := fs.blockComE.FindAllStringIndex(fs.curLine, -1)
 	if len(idxe) == 0 {
-		c.inComment = true
+		fs.inComment = true
 		return true
 	}
 	if idxe[len(idxe)-1][0] < idxs[len(idxs)-1][0] {
-		c.inComment = true
+		fs.inComment = true
 		return true
 	}
 	// block comment ends on same line, check if mixed line
 	if idxs[0][0] != 0 {
-		cnt.Mix += 1
+		fs.cnt.Mix += 1
 		return false
 	}
 	// current line is a block comment, no other code
-	cnt.BlockCom += 1
+	fs.cnt.BlockCom += 1
 	return false
 }

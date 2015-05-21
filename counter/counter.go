@@ -61,13 +61,8 @@ type Counter struct {
 	FilterDir *regexp.Regexp
 	// Regexp to exclude all directories that match
 	ExcludeDir *regexp.Regexp
-
-	// internal variables
-	extReg    *regexp.Regexp
-	inComment bool
-	lcReg     *regexp.Regexp
-	bcsReg    *regexp.Regexp
-	bceReg    *regexp.Regexp
+	// Indicates if async
+	Async bool
 }
 
 // create and return a pointer to a new Coutner
@@ -75,7 +70,7 @@ func NewCounter() *Counter {
 	return &Counter{
 		Cnt:        make(map[string]*Count),
 		DepthFirst: true,
-		inComment:  false,
+		Async:      false,
 	}
 }
 
@@ -126,15 +121,39 @@ func (c *Counter) ScanDir(d string) error {
 		if err = c.scanAllDirs(cDirs); err != nil {
 			return err
 		}
-		if err = c.scanAllFiles(files); err != nil {
-			return err
+		if c.Async {
+			var err error
+			ch := make(chan error, len(files))
+			c.scanAllFilesAsync(files, ch)
+			for i := 0; i < len(files); i++ {
+				err = <-ch
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			if err = c.scanAllFiles(files); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
 
 	// scan files using a breadth first algorithm
-	if err = c.scanAllFiles(files); err != nil {
-		return err
+	if c.Async {
+		var err error
+		ch := make(chan error, len(files))
+		c.scanAllFilesAsync(files, ch)
+		for i := 0; i < len(files); i++ {
+			err = <-ch
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		if err = c.scanAllFiles(files); err != nil {
+			return err
+		}
 	}
 	if err = c.scanAllDirs(cDirs); err != nil {
 		return err
@@ -178,6 +197,18 @@ func (c *Counter) scanAllDirs(dirs []string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Counter) scanAllFilesAsync(files map[string]*Language, ch chan error) {
+	for path, lang := range files {
+		go func(p string, l *Language) {
+			if err := c.ScanFile(p, l); err != nil {
+				ch <- err
+				return
+			}
+			ch <- nil
+		}(path, lang)
+	}
 }
 
 // calls ScanFile on each provided file

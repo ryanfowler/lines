@@ -29,6 +29,7 @@ import (
 	"github.com/ryanfowler/lines/counter"
 	"os"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -87,12 +88,14 @@ func counterFromFlags() (*counter.Counter, error) {
 	var exclude string
 	var filterDir string
 	var excludeDir string
+	var async bool
 
 	flag.BoolVar(&breadth, "breadth", false, "use a breadth-first search of directories (default: false)")
 	flag.StringVar(&filter, "filter", "", "filter all file and directory names with the provided regex")
 	flag.StringVar(&exclude, "exclude", "", "exclude all file and directory names with the provided regex")
 	flag.StringVar(&filterDir, "filterDir", "", "filter all directory names with the provided regex")
 	flag.StringVar(&excludeDir, "excludeDir", "", "exclude all directory names with the provided regex")
+	flag.BoolVar(&async, "async", false, "use all processors")
 
 	flag.Parse()
 
@@ -125,6 +128,11 @@ func counterFromFlags() (*counter.Counter, error) {
 			return nil, err
 		}
 		c.ExcludeDir = rg
+	}
+	// TODO - fix! currently has race conditions for the overall counter
+	if async {
+		c.Async = true
+		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
 
 	return c, nil

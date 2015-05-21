@@ -88,13 +88,14 @@ func (c *Counter) ScanDir(d string) error {
 		return err
 	}
 
-	// obtain slices of the child directories and files
+	// obtain slice and map of the child directories and files
 	cDirs := make([]string, 0)
 	files := make(map[string]*Language)
 	var name string
 	for _, dir := range ds {
 		name = dir.Name()
 
+		// filter or exclude names based on regexp
 		if c.Filter != nil && !c.Filter.Match([]byte(name)) {
 			continue
 		}
@@ -103,6 +104,7 @@ func (c *Counter) ScanDir(d string) error {
 		}
 
 		if dir.IsDir() {
+			// filter or exclude directories based on regexp
 			if c.FilterDir != nil && !c.FilterDir.Match([]byte(name)) {
 				continue
 			}
@@ -120,26 +122,57 @@ func (c *Counter) ScanDir(d string) error {
 
 	// scan files using a depth first algorithm
 	if c.DepthFirst {
-		err = c.scanAllDirs(cDirs)
-		if err != nil {
+		if err = c.scanAllDirs(cDirs); err != nil {
 			return err
 		}
-		err = c.scanAllFiles(files)
-		if err != nil {
+		if err = c.scanAllFiles(files); err != nil {
 			return err
 		}
 		return nil
 	}
 
 	// scan files using a breadth first algorithm
-	err = c.scanAllFiles(files)
+	if err = c.scanAllFiles(files); err != nil {
+		return err
+	}
+	if err = c.scanAllDirs(cDirs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// scans a file and writes the line count to the counter;
+// if an error is encountered, it is returned
+func (c *Counter) ScanFile(path string, lang *Language) error {
+
+	// open the file
+	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	err = c.scanAllDirs(cDirs)
-	if err != nil {
-		return err
+	defer f.Close()
+
+	// initialize scanner for file; scan by lines
+	s := bufio.NewScanner(f)
+	s.Split(bufio.ScanLines)
+
+	// set up counter for current file
+	cnt := new(Count)
+	c.inComment = false
+	c.lcReg = regexp.MustCompile(lang.lCom)
+	c.bcsReg = regexp.MustCompile(lang.bComS)
+	c.bceReg = regexp.MustCompile(lang.bComE)
+
+	// scan through each line in the file
+	for s.Scan() {
+		c.countLine(s, cnt, lang)
 	}
+	c.countLine(s, cnt, lang)
+	// check for error here?
+
+	// add count to main counter
+	c.addCount(cnt, lang)
 
 	return nil
 }
@@ -164,48 +197,14 @@ func (c *Counter) scanAllFiles(files map[string]*Language) error {
 	return nil
 }
 
-// scans a file and writes the line count to the counter;
-// if an error is encountered, it is returned
-func (c *Counter) ScanFile(path string, lang *Language) error {
-
-	// open the file
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// initialize scanner + variables
-	s := bufio.NewScanner(f)
-	s.Split(bufio.ScanLines)
-
-	cnt := new(Count)
-	c.inComment = false
-	c.lcReg = regexp.MustCompile(lang.lCom)
-	c.bcsReg = regexp.MustCompile(lang.bComS)
-	c.bceReg = regexp.MustCompile(lang.bComE)
-
-	// scan through each line in the file
-	for s.Scan() {
-		c.countLine(s, cnt, lang)
-	}
-	c.countLine(s, cnt, lang)
-	// check for error here?
-
-	// add count to main counter
-	c.addCount(cnt, lang)
-
-	return nil
-}
-
 // count a line under the appropriate count type
 // takes pointers to the scanner and Count struct as parameters
 func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 
-	// inc total count and remove leading/trailing whitespace
+	// inc total count
 	cnt.Total += 1
 
-	// if inside block comment
+	// if inside a block comment
 	if c.inComment {
 		cnt.BlockCom += 1
 		if c.stillInBlockComment(s.Text()) {
@@ -215,19 +214,20 @@ func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 		return
 	}
 
+	// remove leading/trailing whitespace
 	line := strings.TrimSpace(s.Text())
 
-	// empty line
+	// check if empty line
 	if line == "" {
 		cnt.Empty += 1
 		return
 	}
 
-	// verify that line comment regexp exists for current language
+	// if line comment regexp exists, check if in the current line
 	if lang.lCom != "" {
 		if idx := c.lcReg.FindStringIndex(line); len(idx) > 0 {
 			if idx[0] == 0 {
-				// at the start of the line
+				// comment is at the start of the line
 				cnt.LineCom += 1
 				return
 			}
@@ -237,7 +237,7 @@ func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 		}
 	}
 
-	// verify that block comment regexps exist for current language
+	// if block comment regexp exists, check if in the current line
 	if lang.bComS != "" && lang.bComE != "" {
 		idxs := c.bcsReg.FindAllStringIndex(line, -1)
 		// check if starting block commment
@@ -251,6 +251,7 @@ func (c *Counter) countLine(s *bufio.Scanner, cnt *Count, lang *Language) {
 			cnt.BlockCom += 1
 			return
 		}
+		// check if block comment started and ended on the same line
 		if len(idxs) > 0 {
 			return
 		}
@@ -311,6 +312,7 @@ func (c *Counter) inBlockComment(idxs [][]int, line string, cnt *Count) bool {
 		cnt.Mix += 1
 		return false
 	}
+	// current line is a block comment, no other code
 	cnt.BlockCom += 1
 	return false
 }

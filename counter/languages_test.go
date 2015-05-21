@@ -24,7 +24,6 @@
 package counter
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -32,23 +31,22 @@ func TestLangGo(t *testing.T) {
 	c := NewCounter()
 	c.ScanFile("./test_files/go_sample.go", LANGS[".go"])
 	cnt := c.Cnt["Go"]
-	fmt.Println(cnt.Code)
-	if cnt.Total != 16 {
-		t.Error("Go - 'Total' lines of code incorrect")
+	if cnt.Total != 39 {
+		t.Error("Go - 'Total' lines of code:", cnt.Total, "Should be:", 39)
 	}
 	if cnt.Code != 6 {
-		t.Error("Go - 'Code' lines of code incorrect")
+		t.Error("Go - 'Code' lines of code:", cnt.Code, "Should be:", 6)
 	}
 	if cnt.Mix != 2 {
-		t.Error("Go - 'Mix' lines of code incorrect")
+		t.Error("Go - 'Mix' lines of code:", cnt.Mix, "Should be:", 2)
 	}
-	if cnt.LineCom != 1 {
-		t.Error("Go - 'Line comments' lines of code incorrect")
+	if cnt.LineCom != 23 {
+		t.Error("Go - 'Line comments' lines of code:", cnt.LineCom, "Should be:", 23)
 	}
 	if cnt.BlockCom != 4 {
-		t.Error("Go - 'Block comments' lines of code incorrect")
+		t.Error("Go - 'Block comments' lines of code:", cnt.BlockCom, "Should be:", 4)
 	}
-	if cnt.Empty != 3 {
-		t.Error("Go - 'Empty' lines of code incorrect")
+	if cnt.Empty != 4 {
+		t.Error("Go - 'Empty' lines of code:", cnt.Empty, "Should be:", 4)
 	}
 }

@@ -26,25 +26,26 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ryanfowler/lines/counter"
 	"os"
 	"regexp"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ryanfowler/lines/counter"
 )
 
 func main() {
-
+	// get initialized Counter
 	c, err := counterFromFlags()
 	if err != nil {
 		newLine()
-		fmt.Println("Error:", err.Error())
+		fmt.Println("Error :", err.Error())
 		newLine()
 		return
 	}
-
+	// get directory
 	args := os.Args
 	if len(args) == 1 || strings.HasPrefix(args[len(args)-1], "-") {
 		newLine()
@@ -56,49 +57,47 @@ func main() {
 	if dir[len(dir)-1] == '/' {
 		dir = dir[:len(dir)-1]
 	}
-
+	// begin counting
 	fmt.Println("Counting lines...")
 	newLine()
-
 	start := time.Now().UTC()
 	err = c.ScanDir(dir)
 	dur := time.Since(start)
-
+	// print time when exiting
 	defer func() {
 		fmt.Println("Time:", dur)
 		newLine()
 	}()
-
+	// if encountered, print error
 	if err != nil {
 		newLine()
 		fmt.Println("Error:", err.Error())
 		return
 	}
-
+	// sort and print results
 	cl := convertAllCounts(c.Cnt)
 	sort.Sort(cl)
-
 	cl.printResults()
 }
 
+// set up Counter
 func counterFromFlags() (*counter.Counter, error) {
-
+	// flag variables
 	var breadth bool
 	var filter string
 	var exclude string
 	var filterDir string
 	var excludeDir string
 	var async bool
-
+	// parse flags
 	flag.BoolVar(&breadth, "breadth", false, "use a breadth-first search of directories (default: false)")
 	flag.StringVar(&filter, "filter", "", "filter all file and directory names with the provided regex")
 	flag.StringVar(&exclude, "exclude", "", "exclude all file and directory names with the provided regex")
 	flag.StringVar(&filterDir, "filterDir", "", "filter all directory names with the provided regex")
 	flag.StringVar(&excludeDir, "excludeDir", "", "exclude all directory names with the provided regex")
 	flag.BoolVar(&async, "async", false, "use all processors")
-
 	flag.Parse()
-
+	// create and initialize Counter
 	c := counter.NewCounter()
 	c.DepthFirst = !breadth
 	if filter != "" {
@@ -134,6 +133,5 @@ func counterFromFlags() (*counter.Counter, error) {
 		c.Async = true
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
-
 	return c, nil
 }

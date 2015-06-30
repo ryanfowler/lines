@@ -105,6 +105,10 @@ func printSpace() {
 	fmt.Print(" ")
 }
 
+func printPlus() {
+	fmt.Print("+")
+}
+
 type count struct {
 	lang  string
 	nums  *counter.Count
@@ -139,6 +143,24 @@ func convertAllCounts(cnts map[string]*counter.Count) countList {
 	return cl
 }
 
+func printDivLine(w widths) {
+	printPlus()
+	printDivLinePart(w.lang)
+	printDivLinePart(w.files)
+	printDivLinePart(w.code)
+	printDivLinePart(w.mix)
+	printDivLinePart(w.com)
+	printDivLinePart(w.empty)
+	printDivLinePart(w.total)
+}
+
+func printDivLinePart(l int) {
+	for i := 0; i < l+2; i++ {
+		printDash()
+	}
+	printPlus()
+}
+
 func (cl countList) printResults() {
 	if len(cl) == 0 {
 		fmt.Println("No source files found")
@@ -149,10 +171,13 @@ func (cl countList) printResults() {
 	}
 	cl.addCommas()
 	w := cl.tableWidths()
-	wSum := w.sum()
-	for i := 0; i < wSum; i++ {
-		printDash()
-	}
+	/*
+		wSum := w.sum()
+		for i := 0; i < wSum; i++ {
+			printDash()
+		}
+	*/
+	printDivLine(w)
 	newLine()
 	printCount(count{
 		lang:  "Language",
@@ -164,23 +189,17 @@ func (cl countList) printResults() {
 		total: "Total",
 	}, w, true)
 	newLine()
-	for i := 0; i < wSum; i++ {
-		printDash()
-	}
+	printDivLine(w)
 	for _, cnt := range cl {
 		newLine()
 		if cnt.lang == "Totals:" {
-			for i := 0; i < wSum; i++ {
-				printDash()
-			}
+			printDivLine(w)
 			newLine()
 		}
 		printCount(cnt, w, false)
 	}
 	newLine()
-	for i := 0; i < wSum; i++ {
-		printDash()
-	}
+	printDivLine(w)
 	newLine()
 }
 

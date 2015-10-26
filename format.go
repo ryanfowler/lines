@@ -26,7 +26,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/ryanfowler/lines/counter"
 	"math"
 	"strconv"
 )
@@ -111,7 +110,7 @@ func printPlus() {
 
 type count struct {
 	lang  string
-	nums  *counter.Count
+	nums  *Count
 	total string
 	code  string
 	com   string
@@ -120,7 +119,7 @@ type count struct {
 	files string
 }
 
-func convertCount(name string, cnt *counter.Count) count {
+func convertCount(name string, cnt *Count) count {
 	return count{
 		lang:  name,
 		nums:  cnt,
@@ -135,7 +134,7 @@ func convertCount(name string, cnt *counter.Count) count {
 
 type countList []count
 
-func convertAllCounts(cnts map[string]*counter.Count) countList {
+func convertAllCounts(cnts map[string]*Count) countList {
 	cl := make(countList, 0, len(cnts))
 	for name, cnt := range cnts {
 		cl = append(cl, convertCount(name, cnt))

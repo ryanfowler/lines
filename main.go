@@ -28,12 +28,9 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/ryanfowler/lines/counter"
 )
 
 func main() {
@@ -61,7 +58,7 @@ func main() {
 	fmt.Println("Counting lines...")
 	newLine()
 	start := time.Now().UTC()
-	err = c.ScanDir(dir)
+	err = c.CountLines(dir)
 	dur := time.Since(start)
 	// print time when exiting
 	defer func() {
@@ -75,63 +72,54 @@ func main() {
 		return
 	}
 	// sort and print results
-	cl := convertAllCounts(c.Cnt)
+	cl := convertAllCounts(c.cnt)
 	sort.Sort(cl)
 	cl.printResults()
 }
 
 // set up Counter
-func counterFromFlags() (*counter.Counter, error) {
+func counterFromFlags() (*Counter, error) {
 	// flag variables
-	var breadth bool
 	var filter string
 	var exclude string
 	var filterDir string
 	var excludeDir string
-	var async bool
 	// parse flags
-	flag.BoolVar(&breadth, "breadth", false, "use a breadth-first search of directories (default: false)")
 	flag.StringVar(&filter, "filter", "", "filter all file and directory names with the provided regex")
 	flag.StringVar(&exclude, "exclude", "", "exclude all file and directory names with the provided regex")
 	flag.StringVar(&filterDir, "filterDir", "", "filter all directory names with the provided regex")
 	flag.StringVar(&excludeDir, "excludeDir", "", "exclude all directory names with the provided regex")
-	flag.BoolVar(&async, "async", false, "use all processors")
 	flag.Parse()
 	// create and initialize Counter
-	c := counter.NewCounter()
-	c.DepthFirst = !breadth
+	c := NewCounter()
 	if filter != "" {
 		rg, err := regexp.Compile(filter)
 		if err != nil {
 			return nil, err
 		}
-		c.Filter = rg
+		c.filter = rg
 	}
 	if exclude != "" {
 		rg, err := regexp.Compile(exclude)
 		if err != nil {
 			return nil, err
 		}
-		c.Exclude = rg
+		c.exclude = rg
 	}
 	if filterDir != "" {
 		rg, err := regexp.Compile(filterDir)
 		if err != nil {
 			return nil, err
 		}
-		c.FilterDir = rg
+		c.filterDir = rg
 	}
 	if excludeDir != "" {
 		rg, err := regexp.Compile(excludeDir)
 		if err != nil {
 			return nil, err
 		}
-		c.ExcludeDir = rg
+		c.excludeDir = rg
 	}
-	// TODO - fix! currently has race conditions for the overall counter
-	if async {
-		c.Async = true
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
+
 	return c, nil
 }

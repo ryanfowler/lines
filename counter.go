@@ -21,19 +21,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package counter
+package main
 
 import (
 	"bufio"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
 )
 
-var extRegexp = regexp.MustCompile(`\.[^.]*$`)
+// file extension regexp
+var feRegexp = regexp.MustCompile(`\.[^.]*$`)
 
-// the Count struct contains all the total counts for each line type
+// The Count struct contains all the line type totals for a single file
 type Count struct {
 	Total    int64
 	Code     int64
@@ -47,37 +51,49 @@ type Count struct {
 // the Counter struct contains the count map and the regexp to find file
 // extensions
 type Counter struct {
-
+	// muCnt is the mutex that protects the cnt map
+	muCnt sync.Mutex
 	// Cnt is a map with language names as keys and Count objects as values
-	Cnt map[string]*Count
-	// DepthFirst indicates whether the file system should be visited using
-	// a depthfirst algorithm (default) or breadth first
-	DepthFirst bool
+	cnt map[string]*Count
 	// Regexp to filter all files and directories to match
-	Filter *regexp.Regexp
+	filter *regexp.Regexp
 	// Regexp to exclude all files and directories that match
-	Exclude *regexp.Regexp
+	exclude *regexp.Regexp
 	// Regexp to filter all directories t0 match
-	FilterDir *regexp.Regexp
+	filterDir *regexp.Regexp
 	// Regexp to exclude all directories that match
-	ExcludeDir *regexp.Regexp
-	// Indicates if async
-	Async bool
+	excludeDir *regexp.Regexp
+	// chScanFile is the channel that receives files to scan
+	chScanFile chan string
+	// chDone is the channel that is closed when no more files are left to scan
+	chDone chan struct{}
+	// wg is the waitgroup for all of the scanFileWorkers
+	wg sync.WaitGroup
 }
 
 // create and return a pointer to a new Coutner
 func NewCounter() *Counter {
-	return &Counter{
-		Cnt:        make(map[string]*Count),
-		DepthFirst: true,
-		Async:      false,
+	c := &Counter{
+		muCnt:      sync.Mutex{},
+		cnt:        make(map[string]*Count),
+		chScanFile: make(chan string),
+		chDone:     make(chan struct{}),
+		wg:         sync.WaitGroup{},
 	}
+	c.startScanFileWorkers()
+	return c
 }
 
-// scans a directory using a recursive depth-first algorithm and adds calls the
-// ScanFile function for each file with a valid extension
-func (c *Counter) ScanDir(d string) error {
+// Count the lines of each supported file located in the provided directory
+func (c *Counter) CountLines(p string) (err error) {
+	err = c.scanDir(p)
+	close(c.chDone)
+	c.wg.Wait()
+	return
+}
 
+// scandir scans a directory sending file paths on chScanFile
+func (c *Counter) scanDir(d string) error {
 	// read all from the directory
 	ds, err := ioutil.ReadDir(d)
 	if err != nil {
@@ -86,75 +102,32 @@ func (c *Counter) ScanDir(d string) error {
 
 	// obtain slice and map of the child directories and files
 	cDirs := make([]string, 0)
-	files := make(map[string]*Language)
 	var name string
 	for _, dir := range ds {
 		name = dir.Name()
-
 		// filter or exclude names based on regexp
-		if c.Filter != nil && !c.Filter.Match([]byte(name)) {
+		if c.filter != nil && !c.filter.Match([]byte(name)) {
 			continue
 		}
-		if c.Exclude != nil && c.Exclude.Match([]byte(name)) {
+		if c.exclude != nil && c.exclude.Match([]byte(name)) {
 			continue
 		}
-
 		if dir.IsDir() {
 			// filter or exclude directories based on regexp
-			if c.FilterDir != nil && !c.FilterDir.Match([]byte(name)) {
+			if c.filterDir != nil && !c.filterDir.Match([]byte(name)) {
 				continue
 			}
-			if c.ExcludeDir != nil && c.ExcludeDir.Match([]byte(name)) {
+			if c.excludeDir != nil && c.excludeDir.Match([]byte(name)) {
 				continue
 			}
-			cDirs = append(cDirs, d+"/"+name)
+			cDirs = append(cDirs, filepath.Join(d, name))
 			continue
 		}
-		// filter only recogized file types
-		if lang := LANGS[strings.ToLower(extRegexp.FindString(name))]; lang != nil {
-			files[d+"/"+name] = lang
-		}
+		// send on chScanFile
+		c.wg.Add(1)
+		c.chScanFile <- filepath.Join(d, name)
 	}
 
-	// scan files using a depth first algorithm
-	if c.DepthFirst {
-		if err = c.scanAllDirs(cDirs); err != nil {
-			return err
-		}
-		if c.Async {
-			var err error
-			ch := make(chan error, len(files))
-			c.scanAllFilesAsync(files, ch)
-			for i := 0; i < len(files); i++ {
-				err = <-ch
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			if err = c.scanAllFiles(files); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	// scan files using a breadth first algorithm
-	if c.Async {
-		var err error
-		ch := make(chan error, len(files))
-		c.scanAllFilesAsync(files, ch)
-		for i := 0; i < len(files); i++ {
-			err = <-ch
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if err = c.scanAllFiles(files); err != nil {
-			return err
-		}
-	}
 	if err = c.scanAllDirs(cDirs); err != nil {
 		return err
 	}
@@ -162,59 +135,53 @@ func (c *Counter) ScanDir(d string) error {
 	return nil
 }
 
+// start two scanFileWorkers for each cpu
+func (c *Counter) startScanFileWorkers() {
+	for i := 0; i < runtime.NumCPU()*2; i++ {
+		go c.scanFileWorker()
+	}
+}
+
 // scans a file and writes the line count to the counter;
 // if an error is encountered, it is returned
-func (c *Counter) ScanFile(path string, lang *Language) error {
+func (c *Counter) scanFileWorker() {
+	var path string
+	for {
+		select {
+		case <-c.chDone:
+			return
+		case path = <-c.chScanFile:
+			// filter only recogized file types
+			lang := LANGS[strings.ToLower(feRegexp.FindString(path))]
+			if lang == nil {
+				c.wg.Done()
+				continue
+			}
+			// open the file
+			f, err := os.Open(path)
+			if err != nil {
+				c.wg.Done()
+				continue
+			}
 
-	// open the file
-	f, err := os.Open(path)
-	if err != nil {
-		return err
+			fs := newFileScanner(f, lang)
+			for fs.scanner.Scan() {
+				fs.countLine()
+			}
+			fs.countLine()
+			// check for error here?
+
+			c.addCount(fs.cnt, fs.lang)
+			f.Close()
+			c.wg.Done()
+		}
 	}
-	defer f.Close()
-
-	// initialize fileScanner
-	fs := newFileScanner(f, lang)
-
-	// scan through each line in the file
-	for fs.scanner.Scan() {
-		fs.countLine()
-	}
-	fs.countLine()
-	// check for error here?
-
-	// add count to main counter
-	c.addCount(fs.cnt, fs.lang)
-
-	return nil
 }
 
 // calls ScanDir on each provided directory
 func (c *Counter) scanAllDirs(dirs []string) error {
 	for _, dir := range dirs {
-		if err := c.ScanDir(dir); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Counter) scanAllFilesAsync(files map[string]*Language, ch chan error) {
-	for path, lang := range files {
-		go func(p string, l *Language) {
-			if err := c.ScanFile(p, l); err != nil {
-				ch <- err
-				return
-			}
-			ch <- nil
-		}(path, lang)
-	}
-}
-
-// calls ScanFile on each provided file
-func (c *Counter) scanAllFiles(files map[string]*Language) error {
-	for path, lang := range files {
-		if err := c.ScanFile(path, lang); err != nil {
+		if err := c.scanDir(dir); err != nil {
 			return err
 		}
 	}
@@ -223,7 +190,9 @@ func (c *Counter) scanAllFiles(files map[string]*Language) error {
 
 // add a count item to the total count for the specified language
 func (c *Counter) addCount(cnt *Count, lang *Language) {
-	if tCnt := c.Cnt[lang.Name]; tCnt != nil {
+	c.muCnt.Lock()
+	defer c.muCnt.Unlock()
+	if tCnt := c.cnt[lang.Name]; tCnt != nil {
 		tCnt.Total += cnt.Total
 		tCnt.Empty += cnt.Empty
 		tCnt.Code += cnt.Code
@@ -234,10 +203,11 @@ func (c *Counter) addCount(cnt *Count, lang *Language) {
 		return
 	}
 	cnt.Files = 1
-	c.Cnt[lang.Name] = cnt
+	c.cnt[lang.Name] = cnt
 
 }
 
+// fileScanner scans a file and counts each line of code
 type fileScanner struct {
 	scanner   *bufio.Scanner
 	cnt       *Count
@@ -249,6 +219,7 @@ type fileScanner struct {
 	blockComE *regexp.Regexp
 }
 
+// create a new fileScanner struct
 func newFileScanner(f *os.File, l *Language) *fileScanner {
 	s := bufio.NewScanner(f)
 	s.Split(bufio.ScanLines)
@@ -263,8 +234,7 @@ func newFileScanner(f *os.File, l *Language) *fileScanner {
 	}
 }
 
-// count a line under the appropriate count type
-// takes pointers to the scanner and Count struct as parameters
+// Count a line under the appropriate type.
 func (fs *fileScanner) countLine() {
 
 	// inc total count
@@ -326,7 +296,6 @@ func (fs *fileScanner) countLine() {
 	fs.cnt.Code += 1
 }
 
-// takes the current line as a string
 // returns true if still in block comment, false otherwise
 func (fs *fileScanner) stillInBlockComment() bool {
 	idxe := fs.blockComE.FindAllStringIndex(fs.curLine, -1)
@@ -340,9 +309,8 @@ func (fs *fileScanner) stillInBlockComment() bool {
 	return idxe[len(idxe)-1][0] < idxs[len(idxs)-1][0]
 }
 
-// takes slices of the start block comment(s) in the current line, and the
-// current line as a string;
-// returns true if starting a block comment, false otherwise
+// Takes slices of the start block comment(s) in the current line as a parameter.
+// Returns true if starting a block comment, false otherwise.
 func (fs *fileScanner) inBlockComment(idxs [][]int) bool {
 	if len(idxs) == 0 {
 		return false

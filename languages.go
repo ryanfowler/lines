@@ -21,7 +21,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package counter
+package main
 
 type Language struct {
 	Name  string
@@ -91,7 +91,7 @@ var (
 			bComE: `\*\/`,
 		},
 		".h": &Language{
-			Name:  "C(.h)",
+			Name:  "C",
 			Ext:   ".h",
 			lCom:  `\/\/`,
 			bComS: `\/\*`,

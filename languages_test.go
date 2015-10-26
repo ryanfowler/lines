@@ -21,7 +21,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package counter
+package main
 
 import (
 	"testing"
@@ -29,8 +29,11 @@ import (
 
 func TestLangGo(t *testing.T) {
 	c := NewCounter()
-	c.ScanFile("./test_files/go_sample.go", LANGS[".go"])
-	cnt := c.Cnt["Go"]
+	c.wg.Add(1)
+	c.chScanFile <- "./test_files/go_sample.go"
+	close(c.chDone)
+	c.wg.Wait()
+	cnt := c.cnt["Go"]
 	if cnt.Total != 39 {
 		t.Error("Go - 'Total' lines of code:", cnt.Total, "Should be:", 39)
 	}

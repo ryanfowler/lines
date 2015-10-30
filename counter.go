@@ -87,8 +87,8 @@ func NewCounter() *Counter {
 // Count the lines of each supported file located in the provided directory
 func (c *Counter) CountLines(p string) (err error) {
 	err = c.scanDir(p)
-	close(c.chDone)
 	c.wg.Wait()
+	close(c.chDone)
 	return
 }
 
@@ -171,8 +171,8 @@ func (c *Counter) scanFileWorker() {
 			fs.countLine()
 			// check for error here?
 
-			c.addCount(fs.cnt, fs.lang)
 			f.Close()
+			c.addCount(fs.cnt, fs.lang)
 			c.wg.Done()
 		}
 	}

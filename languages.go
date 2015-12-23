@@ -223,6 +223,13 @@ var (
 			bComS: `\/\*`,
 			bComE: `\*\/`,
 		},
+		".vue": &Language{
+			Name:  "Vue",
+			Ext:   ".vue",
+			lCom:  `\/\/`,
+			bComS: `\/\*`,
+			bComE: `\*\/`,
+		},
 		".xml": &Language{
 			Name:  "XML",
 			Ext:   ".xml",

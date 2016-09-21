@@ -216,6 +216,13 @@ var (
 			bComS: `\/\*\*`,
 			bComE: `\*\/`,
 		},
+		".styl": &Language{
+			Name:  "Stylus",
+			Ext:   ".styl",
+			lCom:  `\/\/`,
+			bComS: `\/\*`,
+			bComE: `\*\/`,
+		},
 		".swift": &Language{
 			Name:  "Swift",
 			Ext:   ".swift",

@@ -4,6 +4,20 @@ version = "0.1.0"
 authors = ["Ryan Fowler <ryan.fowler19@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+debug = false
+lto = true
+opt-level = 3
 
 [dependencies]
+bytecount = { version = "0.6" }
+crossbeam = { version = "0.7" }
+fnv = { version = "1.0" }
+ignore = { version = "0.4" }
+num_cpus = { version = "1.0" }
+num-format = { version = "0.4" }
+phf = { version = "0.8", features = ["macros"] }
+prettytable-rs = { version = "0.8" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+structopt = { version = "0.3" }

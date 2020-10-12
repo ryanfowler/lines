@@ -1,5 +1,5 @@
 use bytecount;
-use crossbeam::crossbeam_channel::{unbounded, Sender};
+use crossbeam::channel::{unbounded, Sender};
 use fnv::FnvHashMap;
 use ignore::{overrides, WalkBuilder, WalkState};
 use num_cpus;

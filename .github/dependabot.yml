@@ -1,0 +1,20 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "10:00"
+  open-pull-requests-limit: 10
+  reviewers:
+  - ryanfowler
+  allow:
+  - dependency-type: direct
+  - dependency-type: indirect
+  ignore:
+  - dependency-name: syn
+    versions:
+    - 1.0.68
+  - dependency-name: crossbeam-utils
+    versions:
+    - 0.8.3

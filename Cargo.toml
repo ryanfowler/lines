@@ -14,7 +14,7 @@ bytecount = { version = "0.6" }
 crossbeam = { version = "0.8" }
 fnv = { version = "1.0" }
 ignore = { version = "0.4" }
-num_cpus = { version = "1.0" }
+num_cpus = { version = "1.13" }
 num-format = { version = "0.4" }
 phf = { version = "0.10", features = ["macros"] }
 prettytable-rs = { version = "0.8" }

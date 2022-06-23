@@ -1,5 +1,4 @@
 use num_format::{Locale, ToFormattedString};
-use prettytable::{format, Table};
 use serde;
 use serde::Serialize;
 use serde_json;
@@ -7,13 +6,17 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
 use structopt::StructOpt;
+use tabled::{
+    object::{Columns, Rows},
+    style::Border,
+    Alignment, Modify, Style, Table, Tabled,
+};
 
 use crate::lang;
 
 #[derive(Debug)]
 pub enum Format {
     Json,
-    JsonPretty,
     Table,
 }
 
@@ -22,7 +25,6 @@ impl FromStr for Format {
     fn from_str(format: &str) -> Result<Self, Self::Err> {
         match format {
             "json" => Ok(Format::Json),
-            "json-pretty" => Ok(Format::JsonPretty),
             "table" => Ok(Format::Table),
             _ => Err(format.to_string()),
         }
@@ -33,7 +35,7 @@ impl FromStr for Format {
 #[structopt(name = "lines", about = "Count lines of code.")]
 pub struct Opt {
     /// Output format.
-    #[structopt(short, long, default_value = "table")]
+    #[structopt(short = "o", long = "output", default_value = "table")]
     pub format: Format,
 
     /// Show timing
@@ -67,31 +69,55 @@ pub fn get_options() -> Opt {
 
 pub fn write_output(out: &Output, format: Format) {
     match format {
-        Format::Json => write_json(&out),
-        Format::JsonPretty => write_json_pretty(&out),
+        Format::Json => write_json_pretty(&out),
         Format::Table => write_table(&out),
     }
-}
-
-fn write_json(out: &Output) {
-    println!("{}", serde_json::to_string(&out).unwrap());
 }
 
 fn write_json_pretty(out: &Output) {
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
 }
 
+#[derive(Tabled)]
+struct Row {
+    #[tabled(rename = "Language")]
+    language: String,
+    #[tabled(rename = "Files")]
+    files: String,
+    #[tabled(rename = "Lines")]
+    lines: String,
+}
+
 fn write_table(out: &Output) {
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-    table.set_titles(row!["Language", "Files", "Lines"]);
-    for lang in out.languages.iter() {
-        table.add_row(row![
-            lang.language.as_str(),
-            r->lang.num_files.to_formatted_string(&Locale::en),
-            r->lang.num_lines.to_formatted_string(&Locale::en)]);
+    let mut data = Vec::new();
+    for lang in &out.languages {
+        data.push(Row {
+            language: lang.language.as_str().to_string(),
+            files: lang.num_files.to_formatted_string(&Locale::en),
+            lines: lang.num_lines.to_formatted_string(&Locale::en),
+        });
     }
-    table.printstd();
+
+    if out.languages.len() != 1 {
+        data.push(Row {
+            language: "Total".to_string(),
+            files: out.total_num_files.to_formatted_string(&Locale::en),
+            lines: out.total_num_lines.to_formatted_string(&Locale::en),
+        });
+    }
+
+    let mut table = Table::new(&data)
+        .with(Style::psql())
+        .with(Modify::new(Columns::first()).with(Alignment::left()))
+        .with(Modify::new(Columns::new(1..=2)).with(Alignment::right()))
+        .with(Modify::new(Rows::first()).with(Alignment::left()));
+
+    if out.languages.len() != 1 {
+        table = table.with(Modify::new(Rows::last()).with(Border::default().top('-')));
+    }
+
+    println!("{}", table);
+
     if let Some(elapsed_ms) = out.elapsed_ms {
         println!("Took: {}ms", elapsed_ms);
     }

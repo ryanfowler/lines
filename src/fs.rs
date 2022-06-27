@@ -1,11 +1,9 @@
-use bytecount;
 use crossbeam::channel::{unbounded, Sender};
 use fnv::FnvHashMap;
 use ignore::{overrides, WalkBuilder, WalkState};
-use num_cpus;
 use std::fs::File;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::cli;
 use crate::lang;
@@ -74,8 +72,8 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
     map_to_vec(langs)
 }
 
-fn lines_in_file(path: &PathBuf, buf: &mut [u8]) -> io::Result<u64> {
-    let mut file = File::open(path.as_path())?;
+fn lines_in_file(path: &Path, buf: &mut [u8]) -> io::Result<u64> {
+    let mut file = File::open(path)?;
     let mut cnt = 1;
     loop {
         let n = file.read(buf)?;

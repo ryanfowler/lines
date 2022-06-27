@@ -1,7 +1,5 @@
 use num_format::{Locale, ToFormattedString};
-use serde;
 use serde::Serialize;
-use serde_json;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
@@ -69,8 +67,8 @@ pub fn get_options() -> Opt {
 
 pub fn write_output(out: &Output, format: Format) {
     match format {
-        Format::Json => write_json_pretty(&out),
-        Format::Table => write_table(&out),
+        Format::Json => write_json_pretty(out),
+        Format::Table => write_table(out),
     }
 }
 

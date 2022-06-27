@@ -145,10 +145,7 @@ impl fmt::Display for Language {
 }
 
 pub fn get_language(s: &str) -> Option<Language> {
-    match EXT_LANGS.get(s) {
-        None => None,
-        Some(lang) => Some(*lang),
-    }
+    EXT_LANGS.get(s).copied()
 }
 
 static EXT_LANGS: phf::Map<&str, Language> = phf_map! {

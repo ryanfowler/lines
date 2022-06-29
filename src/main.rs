@@ -4,6 +4,9 @@ mod cli;
 mod fs;
 mod lang;
 
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 fn main() {
     let start = Instant::now();
     let opt = cli::get_options();

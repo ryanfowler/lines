@@ -17,7 +17,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
         .overrides(overrides)
         .build_parallel()
         .run(|| {
-            let mut buf = [0u8; 1 << 13];
+            let mut buf = [0u8; 1 << 14];
             let mut map = Map {
                 s: ch_s.clone(),
                 map: FnvHashMap::default(),
@@ -42,7 +42,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                     None => return WalkState::Continue,
                     Some(ext_str) => ext_str,
                 };
-                let language = match lang::get_language(ext_str.to_ascii_lowercase().as_str()) {
+                let language = match lang::get_language(&ext_str.to_ascii_lowercase()) {
                     None => return WalkState::Continue,
                     Some(lang) => lang,
                 };

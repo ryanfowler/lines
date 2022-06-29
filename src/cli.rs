@@ -1,9 +1,9 @@
+use clap::Parser;
 use num_format::{Locale, ToFormattedString};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
-use structopt::StructOpt;
 use tabled::{
     object::{Columns, Rows},
     style::Border,
@@ -29,19 +29,20 @@ impl FromStr for Format {
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "lines", about = "Count lines of code.")]
-pub struct Opt {
+/// Count lines of code.
+#[derive(Debug, Parser)]
+#[clap(version, about)]
+pub struct Args {
     /// Output format.
-    #[structopt(short = "o", long = "output", default_value = "table")]
+    #[clap(short = 'o', long = "output", default_value = "table")]
     pub format: Format,
 
-    /// Show timing
-    #[structopt(short, long)]
+    /// Show timing information.
+    #[clap(short, long)]
     pub timing: bool,
 
     /// Directory or file to scan.
-    #[structopt(parse(from_os_str))]
+    #[clap(default_value = ".")]
     pub path: PathBuf,
 }
 
@@ -61,8 +62,8 @@ pub struct LangOut {
     pub num_lines: u64,
 }
 
-pub fn get_options() -> Opt {
-    Opt::from_args()
+pub fn get_options() -> Args {
+    Args::parse()
 }
 
 pub fn write_output(out: &Output, format: Format) {

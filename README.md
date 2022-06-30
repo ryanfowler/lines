@@ -1,27 +1,33 @@
 # lines
 
-Counts lines of code
+Counts lines of code, fast.
+
+## Installation
+
+From within this repository, run the command:
+
+```sh
+cargo install -f --locked --path .
+```
 
 ## Usage
 
 ```
 $ lines -h
-lines 0.1.0
-Count lines of code.
+lines 0.2.0
+Count lines of code
 
 USAGE:
-    lines [FLAGS] [OPTIONS] <path>
-
-FLAGS:
-    -h, --help       Prints help information
-    -t, --timing     Show timing
-    -V, --version    Prints version information
-
-OPTIONS:
-    -o, --output <format>    Output format [default: table]
+    lines [OPTIONS] [PATH]
 
 ARGS:
-    <path>    Directory or file to scan
+    <PATH>    Directory or file to scan [default: .]
+
+OPTIONS:
+    -h, --help               Print help information
+    -o, --output <FORMAT>    Output format [default: table]
+    -t, --timing             Show timing information
+    -V, --version            Print version information
 ```
 
 Using `lines` in this repo outputs:
@@ -29,14 +35,14 @@ Using `lines` in this repo outputs:
 ```
  Language | Files | Lines 
 ----------+-------+-------
- Rust     |     4 |   526 
- Markdown |     1 |    43 
- TOML     |     1 |    24 
+ Rust     |     4 |   611 
+ Markdown |     1 |    49 
+ TOML     |     1 |    26 
 ---------- ------- -------
- Total    |     6 |   593 
+ Total    |     6 |   686 
 ```
 
 ## License
 
 lines is released with the MIT license.
-Please see the LICENSE file for more details.
+Please see the [LICENSE](./LICENSE) file for more details.

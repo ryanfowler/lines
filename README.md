@@ -4,17 +4,17 @@ Counts lines of code, fast.
 
 ## Installation
 
-From within this repository, run the command:
+Using `cargo`:
 
 ```sh
-cargo install -f --locked --path .
+cargo install lines-cli
 ```
 
 ## Usage
 
 ```
 $ lines -h
-lines 0.2.0
+lines 0.3.1
 Count lines of code
 
 USAGE:
@@ -37,9 +37,9 @@ Using `lines` in this repo outputs:
 ----------+-------+-------
  Rust     |     4 |   611 
  Markdown |     1 |    49 
- TOML     |     1 |    26 
+ TOML     |     1 |    35 
 ---------- ------- -------
- Total    |     6 |   686 
+ Total    |     6 |   695 
 ```
 
 ## License

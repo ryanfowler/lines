@@ -1,9 +1,7 @@
 [package]
 name = "lines-cli"
-version = "0.3.0"
-description = """
-Count lines of code, fast.
-"""
+version = "0.3.1"
+description = "Counts lines of code, fast."
 authors = ["Ryan Fowler <ryan.fowler19@gmail.com>"]
 repository = "https://github.com/ryanfowler/lines"
 categories = ["command-line-utilities"]

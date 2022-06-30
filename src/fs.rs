@@ -25,7 +25,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
             Box::new(move |result| {
                 let entry = match result {
                     Err(err) => {
-                        println!("Error: {}", err);
+                        eprintln!("Error: {}", err);
                         return WalkState::Continue;
                     }
                     Ok(entry) => entry,
@@ -53,7 +53,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                         counter.line_cnt += lines;
                     }
                     Err(err) => {
-                        println!("Error in {:?}: {}", &path, err);
+                        eprintln!("Error: {:?}: {}", &path, err);
                     }
                 }
                 WalkState::Continue

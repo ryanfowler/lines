@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use ahash::AHashMap;
 use crossbeam::channel::{unbounded, Sender};
-use fnv::FnvHashMap;
 use ignore::{overrides, WalkBuilder, WalkState};
 use std::fs::File;
 use std::io::{self, Read};
@@ -42,7 +42,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
             let mut buf = [0u8; 1 << 14];
             let mut map = Map {
                 s: ch_s.clone(),
-                map: FnvHashMap::default(),
+                map: AHashMap::default(),
             };
             Box::new(move |result| {
                 let entry = match result {
@@ -83,7 +83,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
         });
     drop(ch_s);
 
-    let mut langs = FnvHashMap::default();
+    let mut langs = AHashMap::default();
     for m in ch_r.iter() {
         for (&key, val) in m.iter() {
             let l = langs.entry(key).or_insert_with(LangResult::new);
@@ -114,7 +114,7 @@ fn parse_overrides(path: &PathBuf, globs: Vec<&str>) -> overrides::Override {
     override_builder.build().unwrap()
 }
 
-fn map_to_vec(map: FnvHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {
+fn map_to_vec(map: AHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {
     let mut langs = Vec::with_capacity(map.len());
     for (key, val) in map.iter() {
         langs.push(cli::LangOut {
@@ -128,8 +128,8 @@ fn map_to_vec(map: FnvHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> 
 }
 
 struct Map {
-    s: Sender<FnvHashMap<lang::Language, LangResult>>,
-    map: FnvHashMap<lang::Language, LangResult>,
+    s: Sender<AHashMap<lang::Language, LangResult>>,
+    map: AHashMap<lang::Language, LangResult>,
 }
 
 impl Drop for Map {

@@ -20,10 +20,10 @@ lto = "fat"
 opt-level = 3
 
 [dependencies]
+ahash = { version = "0.7.6" }
 bytecount = { version = "0.6" }
 clap = { version = "3.2", features = ["derive"] }
 crossbeam = { version = "0.8" }
-fnv = { version = "1.0" }
 ignore = { version = "0.4" }
 jemallocator = { version = "0.5" }
 num_cpus = { version = "1.13" }

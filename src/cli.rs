@@ -55,7 +55,7 @@ impl FromStr for Format {
 #[derive(Debug, Parser)]
 #[clap(version, about)]
 pub struct Args {
-    /// Output format.
+    /// Output format ("table" or "json").
     #[clap(short = 'o', long = "output", default_value = "table")]
     pub format: Format,
 

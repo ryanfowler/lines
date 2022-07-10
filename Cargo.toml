@@ -18,9 +18,10 @@ codegen-units = 1
 debug = false
 lto = "fat"
 opt-level = 3
+strip = "debuginfo"
 
 [dependencies]
-ahash = { version = "0.7.6" }
+ahash = { version = "0.7" }
 bytecount = { version = "0.6" }
 clap = { version = "3.2", features = ["derive"] }
 crossbeam = { version = "0.8" }

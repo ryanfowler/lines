@@ -21,7 +21,7 @@ jobs:
         components: clippy, rustfmt
 
     - name: Run cargo build
-      run: cargo build --release
+      run: cargo build
 
     - name: Run cargo clippy
       run: cargo clippy

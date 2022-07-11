@@ -321,7 +321,7 @@ checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
 
 [[package]]
 name = "lines-cli"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "ahash",
  "bytecount",

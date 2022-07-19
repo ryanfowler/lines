@@ -14,8 +14,8 @@ cargo install lines-cli
 
 ```
 $ lines -h
-lines 0.3.1
-Count lines of code
+lines-cli 0.3.2
+Counts lines of code, fast.
 
 USAGE:
     lines [OPTIONS] [PATH]
@@ -25,7 +25,7 @@ ARGS:
 
 OPTIONS:
     -h, --help               Print help information
-    -o, --output <FORMAT>    Output format [default: table]
+    -o, --output <FORMAT>    Output format ("table" or "json") [default: table]
     -t, --timing             Show timing information
     -V, --version            Print version information
 ```
@@ -37,9 +37,9 @@ Using `lines` in this repo outputs:
 ----------+-------+-------
  Rust     |     4 |   611 
  Markdown |     1 |    49 
- TOML     |     1 |    35 
+ TOML     |     1 |    36 
 ---------- ------- -------
- Total    |     6 |   695 
+ Total    |     6 |   696 
 ```
 
 ## License

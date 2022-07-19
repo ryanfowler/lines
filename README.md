@@ -14,7 +14,7 @@ cargo install lines-cli
 
 ```
 $ lines -h
-lines-cli 0.3.2
+lines-cli 0.3.3
 Counts lines of code, fast.
 
 USAGE:

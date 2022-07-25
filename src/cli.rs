@@ -140,6 +140,6 @@ fn write_table(out: &Output) {
     println!("{}", table);
 
     if let Some(elapsed_ms) = out.elapsed_ms {
-        println!("Took: {}ms", elapsed_ms);
+        println!("\nTook: {}ms", elapsed_ms);
     }
 }

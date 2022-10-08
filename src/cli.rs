@@ -127,14 +127,15 @@ fn write_table(out: &Output) {
         });
     }
 
-    let mut table = Table::new(&data)
+    let mut table = Table::new(&data);
+    table
         .with(Style::psql())
         .with(Modify::new(Columns::first()).with(Alignment::left()))
         .with(Modify::new(Columns::new(1..=2)).with(Alignment::right()))
         .with(Modify::new(Rows::first()).with(Alignment::left()));
 
     if out.languages.len() != 1 {
-        table = table.with(Modify::new(Rows::last()).with(Border::default().top('-')));
+        table.with(Modify::new(Rows::last()).with(Border::default().top('-')));
     }
 
     println!("{}", table);

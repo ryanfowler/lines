@@ -34,7 +34,7 @@ use tabled::{
 
 use crate::lang;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Format {
     Json,
     Table,

@@ -52,7 +52,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                     }
                     Ok(entry) => entry,
                 };
-                let path = entry.into_path();
+                let path = entry.path();
                 if path.is_dir() {
                     return WalkState::Continue;
                 }
@@ -68,7 +68,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                     None => return WalkState::Continue,
                     Some(lang) => lang,
                 };
-                match lines_in_file(&path, &mut buf) {
+                match lines_in_file(path, &mut buf) {
                     Ok(lines) => {
                         let counter = map.map.entry(language).or_insert_with(LangResult::new);
                         counter.file_cnt += 1;

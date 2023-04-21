@@ -27,9 +27,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
 use tabled::{
-    object::{Columns, Rows},
-    style::Border,
-    Alignment, Modify, Style, Table, Tabled,
+    settings::{
+        object::{Columns, Rows},
+        Alignment, Border, Modify, Style,
+    },
+    Table, Tabled,
 };
 
 use crate::lang;

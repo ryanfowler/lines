@@ -22,7 +22,7 @@ strip = "debuginfo"
 
 [dependencies]
 bytecount = { version = "0.6" }
-clap = { version = "4.1", features = ["derive"] }
+clap = { version = "4.2", features = ["derive"] }
 crossbeam = { version = "0.8" }
 ignore = { version = "0.4" }
 jemallocator = { version = "0.5" }

@@ -1,12 +1,12 @@
-name: Continuous Integration
+name: ci
 
 on:
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
       with:
@@ -15,17 +15,17 @@ jobs:
     - name: Set up Rust
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: 1.66.1
+        toolchain: 1.70.0
         components: clippy, rustfmt
 
     - name: Run cargo fmt
       run: cargo fmt --all -- --check
-
-    - name: Run cargo build
-      run: cargo build
 
     - name: Run cargo clippy
       run: cargo clippy -- -D warnings
 
     - name: Run cargo test
       run: cargo test
+
+    - name: Run cargo build
+      run: cargo build

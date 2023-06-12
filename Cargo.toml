@@ -16,9 +16,9 @@ name = "lines"
 [profile.release]
 codegen-units = 1
 debug = false
-lto = "fat"
+lto = true
 opt-level = 3
-strip = "debuginfo"
+strip = true
 
 [dependencies]
 bytecount = { version = "0.6" }

@@ -37,8 +37,8 @@ fn main() {
     let globs = vec!["!node_modules/", "!vendor/"];
     let langs = fs::visit_path_parallel(&opt.path, globs);
 
-    let total_num_files = langs.iter().fold(0u64, |sum, l| sum + l.num_files);
-    let total_num_lines = langs.iter().fold(0u64, |sum, l| sum + l.num_lines);
+    let total_num_files = langs.iter().map(|l| l.num_files).sum();
+    let total_num_lines = langs.iter().map(|l| l.num_lines).sum();
 
     let end = start.elapsed();
     let total_ms = (end.as_secs() * 1000) + end.subsec_millis() as u64;

@@ -104,7 +104,7 @@ fn write_json_pretty(out: &Output) {
 #[derive(Tabled)]
 struct Row {
     #[tabled(rename = "Language")]
-    language: String,
+    language: &'static str,
     #[tabled(rename = "Files")]
     files: String,
     #[tabled(rename = "Lines")]
@@ -115,7 +115,7 @@ fn write_table(out: &Output) {
     let mut data = Vec::new();
     for lang in &out.languages {
         data.push(Row {
-            language: lang.language.as_str().to_string(),
+            language: lang.language.as_str(),
             files: lang.num_files.to_formatted_string(&Locale::en),
             lines: lang.num_lines.to_formatted_string(&Locale::en),
         });
@@ -123,7 +123,7 @@ fn write_table(out: &Output) {
 
     if out.languages.len() != 1 {
         data.push(Row {
-            language: "Total".to_string(),
+            language: "Total",
             files: out.total_num_files.to_formatted_string(&Locale::en),
             lines: out.total_num_lines.to_formatted_string(&Locale::en),
         });

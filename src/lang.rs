@@ -85,7 +85,7 @@ pub enum Language {
 }
 
 impl Language {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Language::Ada => "Ada",
             Language::AppleScript => "AppleScript",

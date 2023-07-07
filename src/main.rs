@@ -47,7 +47,7 @@ fn main() {
         languages: langs,
         total_num_files,
         total_num_lines,
-        elapsed_ms: if opt.timing { Some(total_ms) } else { None },
+        elapsed_ms: opt.timing.then_some(total_ms),
     };
 
     cli::write_output(&out, opt.format);

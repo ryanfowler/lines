@@ -117,12 +117,10 @@ fn parse_overrides(path: &PathBuf, globs: Vec<&str>) -> overrides::Override {
 fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {
     let mut langs: Vec<_> = map
         .into_iter()
-        .map(|(key, val)| {
-            cli::LangOut {
-                language: key,
-                num_files: val.file_cnt,
-                num_lines: val.line_cnt,
-            }
+        .map(|(key, val)| cli::LangOut {
+            language: key,
+            num_files: val.file_cnt,
+            num_lines: val.line_cnt,
         })
         .collect();
     langs.sort_unstable_by(|a, b| a.num_lines.cmp(&b.num_lines).reverse());

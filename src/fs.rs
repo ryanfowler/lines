@@ -45,28 +45,22 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                 map: FxHashMap::default(),
             };
             Box::new(move |result| {
-                let entry = match result {
-                    Err(err) => {
-                        eprintln!("Error: {}", err);
-                        return WalkState::Continue;
-                    }
-                    Ok(entry) => entry,
+                let Ok(entry) = result else {
+                    eprintln!("Error: {}", result.err().unwrap());
+                    return WalkState::Continue;
                 };
                 let path = entry.path();
                 if path.is_dir() {
                     return WalkState::Continue;
                 }
-                let ext = match path.extension() {
-                    None => return WalkState::Continue,
-                    Some(ext) => ext,
+                let Some(ext) = path.extension() else {
+                    return WalkState::Continue;
                 };
-                let ext_str = match ext.to_str() {
-                    None => return WalkState::Continue,
-                    Some(ext_str) => ext_str,
+                let Some(ext_str) = ext.to_str() else {
+                    return WalkState::Continue;
                 };
-                let language = match lang::get_language(&ext_str.to_ascii_lowercase()) {
-                    None => return WalkState::Continue,
-                    Some(lang) => lang,
+                let Some(language) = lang::get_language(&ext_str.to_ascii_lowercase()) else {
+                    return WalkState::Continue;
                 };
                 match lines_in_file(path, &mut buf) {
                     Ok(lines) => {

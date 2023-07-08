@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crossbeam::channel::{unbounded, Sender};
+use crossbeam::channel;
 use ignore::{overrides, WalkBuilder, WalkState};
 use rustc_hash::FxHashMap;
 use std::fs::File;
@@ -31,7 +31,7 @@ use crate::cli;
 use crate::lang;
 
 pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut> {
-    let (ch_s, ch_r) = unbounded();
+    let (ch_s, ch_r) = channel::unbounded();
     let overrides = parse_overrides(path, globs);
 
     WalkBuilder::new(path)
@@ -40,10 +40,7 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
         .build_parallel()
         .run(|| {
             let mut buf = [0u8; 1 << 14];
-            let mut map = Map {
-                s: ch_s.clone(),
-                map: FxHashMap::default(),
-            };
+            let ch_s = ch_s.clone();
             Box::new(move |result| {
                 let Ok(entry) = result else {
                     eprintln!("Error: {}", result.err().unwrap());
@@ -63,14 +60,8 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
                     return WalkState::Continue;
                 };
                 match lines_in_file(path, &mut buf) {
-                    Ok(lines) => {
-                        let counter = map.map.entry(language).or_insert_with(LangResult::new);
-                        counter.file_cnt += 1;
-                        counter.line_cnt += lines;
-                    }
-                    Err(err) => {
-                        eprintln!("Error: {:?}: {}", &path, err);
-                    }
+                    Ok(lines) => ch_s.send((language, lines)).unwrap(),
+                    Err(err) => eprintln!("Error: {:?}: {}", &path, err),
                 }
                 WalkState::Continue
             })
@@ -78,12 +69,10 @@ pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut
     drop(ch_s);
 
     let mut langs = FxHashMap::default();
-    for m in ch_r.iter() {
-        for (&key, val) in m.iter() {
-            let l = langs.entry(key).or_insert_with(LangResult::new);
-            l.file_cnt += val.file_cnt;
-            l.line_cnt += val.line_cnt;
-        }
+    for (language, lines) in ch_r.into_iter() {
+        let l = langs.entry(language).or_insert_with(LangResult::new);
+        l.file_cnt += 1;
+        l.line_cnt += lines;
     }
     map_to_vec(langs)
 }
@@ -119,17 +108,6 @@ fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {
         .collect();
     langs.sort_unstable_by(|a, b| a.num_lines.cmp(&b.num_lines).reverse());
     langs
-}
-
-struct Map {
-    s: Sender<FxHashMap<lang::Language, LangResult>>,
-    map: FxHashMap<lang::Language, LangResult>,
-}
-
-impl Drop for Map {
-    fn drop(&mut self) {
-        self.s.send(self.map.clone()).unwrap();
-    }
 }
 
 #[derive(Clone, Copy, Debug)]

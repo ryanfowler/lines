@@ -21,7 +21,7 @@
 // SOFTWARE.
 
 use crossbeam::channel::{unbounded, Sender};
-use ignore::{overrides, WalkBuilder, WalkState};
+use ignore::{WalkBuilder, WalkState};
 use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::io::{self, Read};
@@ -30,13 +30,11 @@ use std::path::{Path, PathBuf};
 use crate::cli;
 use crate::lang;
 
-pub fn visit_path_parallel(path: &PathBuf, globs: Vec<&str>) -> Vec<cli::LangOut> {
+pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
     let (ch_s, ch_r) = unbounded();
-    let overrides = parse_overrides(path, globs);
 
     WalkBuilder::new(path)
-        .threads(num_cpus::get() + 1)
-        .overrides(overrides)
+        .threads(std::thread::available_parallelism().map_or(1, |v| v.get()) + 1)
         .build_parallel()
         .run(|| {
             let mut buf = [0u8; 1 << 14];
@@ -98,14 +96,6 @@ fn lines_in_file(path: &Path, buf: &mut [u8]) -> io::Result<u64> {
         }
         cnt += bytecount::count(&buf[0..n], b'\n');
     }
-}
-
-fn parse_overrides(path: &PathBuf, globs: Vec<&str>) -> overrides::Override {
-    let mut override_builder = overrides::OverrideBuilder::new(path);
-    for glob in globs.iter() {
-        override_builder.add(glob).unwrap();
-    }
-    override_builder.build().unwrap()
 }
 
 fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {

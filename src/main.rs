@@ -34,8 +34,7 @@ fn main() {
     let start = Instant::now();
     let opt = cli::get_options();
 
-    let globs = vec!["!node_modules/", "!vendor/"];
-    let langs = fs::visit_path_parallel(&opt.path, globs);
+    let langs = fs::visit_path_parallel(&opt.path);
 
     let total_num_files = langs.iter().map(|l| l.num_files).sum();
     let total_num_lines = langs.iter().map(|l| l.num_lines).sum();

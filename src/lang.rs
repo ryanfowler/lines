@@ -81,6 +81,7 @@ pub enum Language {
     WebAssembly,
     Xml,
     Yaml,
+    Zig,
 }
 
 impl Language {
@@ -142,6 +143,7 @@ impl Language {
             Language::WebAssembly => "WebAssembly",
             Language::Xml => "XML",
             Language::Yaml => "YAML",
+            Language::Zig => "Zig",
         }
     }
 }
@@ -245,6 +247,7 @@ pub fn get_language(s: &str) -> Option<Language> {
         "xml" => Language::Xml,
         "yaml" => Language::Yaml,
         "yml" => Language::Yaml,
+        "zig" => Language::Zig,
         _ => return None,
     })
 }

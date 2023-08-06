@@ -209,6 +209,7 @@ pub fn get_language(s: &str) -> Option<Language> {
         "lua" => Language::Lua,
         "m" => Language::ObjectiveC,
         "md" => Language::Markdown,
+        "mjs" => Language::JavaScript,
         "ml" => Language::OCaml,
         "mli" => Language::OCaml,
         "mustache" => Language::Mustache,

@@ -29,7 +29,8 @@ use std::string::ToString;
 use tabled::{
     settings::{
         object::{Columns, Rows},
-        Alignment, Border, Modify, Style,
+        style::Border,
+        Alignment, Modify, Style,
     },
     Table, Tabled,
 };
@@ -137,7 +138,7 @@ fn write_table(out: &Output) {
         .with(Modify::new(Rows::first()).with(Alignment::left()));
 
     if out.languages.len() != 1 {
-        table.with(Modify::new(Rows::last()).with(Border::default().top('-')));
+        table.with(Modify::new(Rows::last()).with(Border::new().set_top('-')));
     }
 
     println!("{}", table);

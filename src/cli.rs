@@ -138,7 +138,7 @@ fn write_table(out: &Output) {
         .with(Modify::new(Rows::first()).with(Alignment::left()));
 
     if out.languages.len() != 1 {
-        table.with(Modify::new(Rows::last()).with(Border::new().set_top('-')));
+        table.with(Modify::new(Rows::last()).with(Border::new().top('-')));
     }
 
     println!("{}", table);

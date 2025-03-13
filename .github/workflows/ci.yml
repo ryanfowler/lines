@@ -7,11 +7,11 @@ on:
     branches: ["master"]
 
 env:
-  RUST_VERSION: "1.79.0"
+  RUST_VERSION: "1.85.0"
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:

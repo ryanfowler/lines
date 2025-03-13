@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crossbeam::channel::{unbounded, Sender};
+use crossbeam::channel::{Sender, unbounded};
 use ignore::{WalkBuilder, WalkState};
 use rustc_hash::FxHashMap;
 use std::fs::File;

@@ -7,7 +7,7 @@ repository = "https://github.com/ryanfowler/lines"
 categories = ["command-line-utilities"]
 keywords = ["count", "lines", "lines-of-code"]
 license = "MIT"
-edition = "2021"
+edition = "2024"
 
 [[bin]]
 path = "src/main.rs"

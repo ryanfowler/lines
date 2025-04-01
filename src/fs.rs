@@ -37,7 +37,7 @@ pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
         .threads(std::thread::available_parallelism().map_or(1, |v| v.get()) + 1)
         .build_parallel()
         .run(|| {
-            let mut buf = [0u8; 1 << 14];
+            let mut buf = [0u8; 1 << 15];
             let mut map = Map {
                 s: ch_s.clone(),
                 map: FxHashMap::default(),
@@ -87,14 +87,24 @@ pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
 }
 
 fn lines_in_file(path: &Path, buf: &mut [u8]) -> io::Result<u64> {
-    let mut file = File::open(path)?;
-    let mut cnt = 1;
+    let file = File::open(path)?;
+    lines_in_reader(file, buf)
+}
+
+fn lines_in_reader(mut input: impl Read, buf: &mut [u8]) -> io::Result<u64> {
+    let mut cnt = 0;
+    let mut ends_with_newline: Option<bool> = None;
     loop {
-        let n = file.read(buf)?;
+        let n = input.read(buf)?;
         if n == 0 {
+            if let Some(false) = ends_with_newline {
+                cnt += 1;
+            }
             return Ok(cnt as u64);
         }
+
         cnt += bytecount::count(&buf[0..n], b'\n');
+        ends_with_newline = Some(buf[n - 1] == b'\n');
     }
 }
 
@@ -134,5 +144,39 @@ impl LangResult {
             file_cnt: 0,
             line_cnt: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::lines_in_reader;
+
+    #[test]
+    fn test_empty() {
+        let input = "";
+        let cursor = Cursor::new(input);
+        let mut buf = [0u8; 1 << 10];
+        let res = lines_in_reader(cursor, &mut buf).unwrap();
+        assert_eq!(res, 0);
+    }
+
+    #[test]
+    fn test_ends_with_newline() {
+        let input = "this\nis\na\ntest\n";
+        let cursor = Cursor::new(input);
+        let mut buf = [0u8; 1 << 10];
+        let res = lines_in_reader(cursor, &mut buf).unwrap();
+        assert_eq!(res, 4);
+    }
+
+    #[test]
+    fn test_ends_with_no_newline() {
+        let input = "this\nis\na\ntest";
+        let cursor = Cursor::new(input);
+        let mut buf = [0u8; 1 << 10];
+        let res = lines_in_reader(cursor, &mut buf).unwrap();
+        assert_eq!(res, 4);
     }
 }

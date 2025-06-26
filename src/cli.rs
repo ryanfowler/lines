@@ -141,9 +141,9 @@ fn write_table(out: &Output) {
         table.with(Modify::new(Rows::last()).with(Border::new().top('-')));
     }
 
-    println!("{}", table);
+    println!("{table}");
 
     if let Some(elapsed_ms) = out.elapsed_ms {
-        println!("\nTook: {}ms", elapsed_ms);
+        println!("\nTook: {elapsed_ms}ms");
     }
 }

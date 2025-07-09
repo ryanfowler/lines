@@ -26,9 +26,8 @@ mod cli;
 mod fs;
 mod lang;
 
-#[cfg(not(target_os = "windows"))]
 #[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
     let start = Instant::now();

@@ -21,14 +21,14 @@ opt-level = 3
 strip = true
 
 [dependencies]
-bytecount = { version = "0.6" }
-clap = { version = "4.5", features = ["derive"] }
-crossbeam = { version = "0.8" }
-ignore = { version = "0.4" }
+bytecount = { version = "0.6.9" }
+clap = { version = "4.5.41", features = ["derive"] }
+crossbeam = { version = "0.8.4" }
+ignore = { version = "0.4.23" }
 mimalloc = { version = "0.1.47" }
-num-format = { version = "0.4" }
+num-format = { version = "0.4.4" }
 rustc-hash = { version = "2.1.1" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-tabled = { version = "0.20" }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140" }
+tabled = { version = "0.20.0" }
 

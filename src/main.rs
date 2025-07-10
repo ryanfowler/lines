@@ -33,7 +33,13 @@ fn main() {
     let start = Instant::now();
     let opt = cli::get_options();
 
-    let langs = fs::visit_path_parallel(&opt.path);
+    let langs = match fs::visit_path_parallel(&opt.path, &opt.exclude) {
+        Ok(langs) => langs,
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    };
 
     let total_num_files = langs.iter().map(|l| l.num_files).sum();
     let total_num_lines = langs.iter().map(|l| l.num_lines).sum();

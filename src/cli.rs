@@ -66,6 +66,10 @@ pub struct Args {
     #[clap(short, long)]
     pub timing: bool,
 
+    /// Exclude regex patterns (can be used multiple times).
+    #[clap(short = 'e', long = "exclude", action = clap::ArgAction::Append)]
+    pub exclude: Vec<String>,
+
     /// Directory or file to scan.
     #[clap(default_value = ".")]
     pub path: PathBuf,

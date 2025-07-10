@@ -54,11 +54,10 @@ pub fn visit_path_parallel(
                     return WalkState::Continue;
                 };
                 let path = entry.path();
-                if path.is_dir() {
-                    return WalkState::Continue;
-                }
-
                 if should_exclude_path(path, &patterns) {
+                    return WalkState::Skip;
+                }
+                if path.is_dir() {
                     return WalkState::Continue;
                 }
                 let Some(ext) = path.extension() else {

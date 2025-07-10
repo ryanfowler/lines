@@ -22,6 +22,7 @@
 
 use crossbeam::channel::{Sender, unbounded};
 use ignore::{WalkBuilder, WalkState};
+use regex::Regex;
 use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::io::{self, Read};
@@ -30,13 +31,18 @@ use std::path::{Path, PathBuf};
 use crate::cli;
 use crate::lang;
 
-pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
+pub fn visit_path_parallel(
+    path: &PathBuf,
+    exclude_patterns: &[String],
+) -> Result<Vec<cli::LangOut>, String> {
+    let compiled_patterns = compile_exclude_patterns(exclude_patterns)?;
     let (ch_s, ch_r) = unbounded();
 
     WalkBuilder::new(path)
         .threads(std::thread::available_parallelism().map_or(1, |v| v.get()) + 1)
         .build_parallel()
         .run(|| {
+            let patterns = compiled_patterns.clone();
             let mut buf = [0u8; 1 << 15];
             let mut map = Map {
                 s: ch_s.clone(),
@@ -49,6 +55,10 @@ pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
                 };
                 let path = entry.path();
                 if path.is_dir() {
+                    return WalkState::Continue;
+                }
+
+                if should_exclude_path(path, &patterns) {
                     return WalkState::Continue;
                 }
                 let Some(ext) = path.extension() else {
@@ -83,7 +93,7 @@ pub fn visit_path_parallel(path: &PathBuf) -> Vec<cli::LangOut> {
             l.line_cnt += val.line_cnt;
         }
     }
-    map_to_vec(langs)
+    Ok(map_to_vec(langs))
 }
 
 fn lines_in_file(path: &Path, buf: &mut [u8]) -> io::Result<u64> {
@@ -106,6 +116,33 @@ fn lines_in_reader(mut input: impl Read, buf: &mut [u8]) -> io::Result<u64> {
         cnt += bytecount::count(&buf[0..n], b'\n');
         ends_with_newline = Some(buf[n - 1] == b'\n');
     }
+}
+
+fn compile_exclude_patterns(patterns: &[String]) -> Result<Vec<Regex>, String> {
+    let mut compiled = Vec::with_capacity(patterns.len());
+
+    for pattern in patterns {
+        match Regex::new(pattern) {
+            Ok(regex) => compiled.push(regex),
+            Err(e) => {
+                return Err(format!("Invalid regex pattern '{pattern}': {e}"));
+            }
+        }
+    }
+
+    Ok(compiled)
+}
+
+fn should_exclude_path(path: &Path, exclude_patterns: &[Regex]) -> bool {
+    for pattern in exclude_patterns {
+        if let Some(file_name) = path.file_name() {
+            if pattern.is_match(&file_name.to_string_lossy()) {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {

@@ -134,11 +134,10 @@ fn compile_exclude_patterns(patterns: &[String]) -> Result<Vec<Regex>, String> {
 
 fn should_exclude_path(path: &Path, exclude_patterns: &[Regex]) -> bool {
     for pattern in exclude_patterns {
-        if let Some(file_name) = path.file_name() {
-            if pattern.is_match(&file_name.to_string_lossy()) {
+        if let Some(file_name) = path.file_name()
+            && pattern.is_match(&file_name.to_string_lossy()) {
                 return true;
             }
-        }
     }
 
     false

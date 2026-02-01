@@ -26,13 +26,14 @@ use regex::Regex;
 use rustc_hash::FxHashMap;
 use std::fs::File;
 use std::io::{self, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 
 use crate::cli;
 use crate::lang;
 
 pub fn visit_path_parallel(
-    path: &PathBuf,
+    path: &Path,
     exclude_patterns: &[String],
 ) -> Result<Vec<cli::LangOut>, String> {
     let compiled_patterns = compile_exclude_patterns(exclude_patterns)?;
@@ -42,7 +43,7 @@ pub fn visit_path_parallel(
         .threads(std::thread::available_parallelism().map_or(1, |v| v.get()) + 1)
         .build_parallel()
         .run(|| {
-            let patterns = compiled_patterns.clone();
+            let patterns = Arc::clone(&compiled_patterns);
             let mut buf = [0u8; 1 << 15];
             let mut map = Map {
                 s: ch_s.clone(),
@@ -50,7 +51,7 @@ pub fn visit_path_parallel(
             };
             Box::new(move |result| {
                 let Ok(entry) = result else {
-                    eprintln!("Error: {}", result.err().unwrap());
+                    eprintln!("Error: {}", result.unwrap_err());
                     return WalkState::Continue;
                 };
                 let path = entry.path();
@@ -66,7 +67,15 @@ pub fn visit_path_parallel(
                 let Some(ext_str) = ext.to_str() else {
                     return WalkState::Continue;
                 };
-                let Some(language) = lang::get_language(&ext_str.to_ascii_lowercase()) else {
+                let ext_bytes = ext_str.as_bytes();
+                let mut lower_buf = [0u8; 16];
+                if ext_bytes.len() > lower_buf.len() {
+                    return WalkState::Continue;
+                }
+                lower_buf[..ext_bytes.len()].copy_from_slice(ext_bytes);
+                lower_buf[..ext_bytes.len()].make_ascii_lowercase();
+                let lower_ext = std::str::from_utf8(&lower_buf[..ext_bytes.len()]).unwrap();
+                let Some(language) = lang::get_language(lower_ext) else {
                     return WalkState::Continue;
                 };
                 match lines_in_file(path, &mut buf) {
@@ -117,7 +126,7 @@ fn lines_in_reader(mut input: impl Read, buf: &mut [u8]) -> io::Result<u64> {
     }
 }
 
-fn compile_exclude_patterns(patterns: &[String]) -> Result<Vec<Regex>, String> {
+fn compile_exclude_patterns(patterns: &[String]) -> Result<Arc<[Regex]>, String> {
     let mut compiled = Vec::with_capacity(patterns.len());
 
     for pattern in patterns {
@@ -129,7 +138,7 @@ fn compile_exclude_patterns(patterns: &[String]) -> Result<Vec<Regex>, String> {
         }
     }
 
-    Ok(compiled)
+    Ok(compiled.into())
 }
 
 fn should_exclude_path(path: &Path, exclude_patterns: &[Regex]) -> bool {
@@ -164,7 +173,7 @@ struct Map {
 
 impl Drop for Map {
     fn drop(&mut self) {
-        self.s.send(self.map.clone()).unwrap();
+        let _ = self.s.send(std::mem::take(&mut self.map));
     }
 }
 

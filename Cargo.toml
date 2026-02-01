@@ -1,6 +1,6 @@
 [package]
 name = "lines-cli"
-version = "0.3.16"
+version = "0.3.17"
 description = "Counts lines of code, fast."
 authors = ["Ryan Fowler <ryan.fowler19@gmail.com>"]
 repository = "https://github.com/ryanfowler/lines"

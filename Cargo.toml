@@ -27,7 +27,7 @@ crossbeam = { version = "0.8.4" }
 ignore = { version = "0.4.25" }
 mimalloc = { version = "0.1.48" }
 num-format = { version = "0.4.4" }
-regex = { version = "1.12.2" }
+regex = { version = "1.12.3" }
 rustc-hash = { version = "2.1.1" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149" }

@@ -74,7 +74,8 @@ pub fn visit_path_parallel(
                 }
                 lower_buf[..ext_bytes.len()].copy_from_slice(ext_bytes);
                 lower_buf[..ext_bytes.len()].make_ascii_lowercase();
-                let lower_ext = std::str::from_utf8(&lower_buf[..ext_bytes.len()]).unwrap();
+                let lower_ext =
+                    unsafe { std::str::from_utf8_unchecked(&lower_buf[..ext_bytes.len()]) };
                 let Some(language) = lang::get_language(lower_ext) else {
                     return WalkState::Continue;
                 };
@@ -142,15 +143,11 @@ fn compile_exclude_patterns(patterns: &[String]) -> Result<Arc<[Regex]>, String>
 }
 
 fn should_exclude_path(path: &Path, exclude_patterns: &[Regex]) -> bool {
-    for pattern in exclude_patterns {
-        if let Some(file_name) = path.file_name()
-            && pattern.is_match(&file_name.to_string_lossy())
-        {
-            return true;
-        }
-    }
-
-    false
+    let Some(file_name) = path.file_name() else {
+        return false;
+    };
+    let file_name = file_name.to_string_lossy();
+    exclude_patterns.iter().any(|p| p.is_match(&file_name))
 }
 
 fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {

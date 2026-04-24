@@ -45,7 +45,7 @@ fn main() {
     let total_num_lines = langs.iter().map(|l| l.num_lines).sum();
 
     let end = start.elapsed();
-    let total_ms = (end.as_secs() * 1000) + end.subsec_millis() as u64;
+    let total_ms = end.as_millis() as u64;
 
     let out = cli::Output {
         languages: langs,

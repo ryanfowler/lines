@@ -31,5 +31,5 @@ regex = { version = "1.12.3" }
 rustc-hash = { version = "2.1.2" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.150" }
-tabled = { version = "0.20.0" }
+tabled = { version = "0.21.0" }
 

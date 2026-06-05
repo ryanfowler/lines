@@ -24,7 +24,7 @@ strip = true
 bytecount = { version = "0.6.9" }
 clap = { version = "4.6.1", features = ["derive"] }
 crossbeam = { version = "0.8.4" }
-ignore = { version = "0.4.25" }
+ignore = { version = "0.4.26" }
 mimalloc = { version = "0.1.52" }
 num-format = { version = "0.4.4" }
 regex = { version = "1.12.3" }

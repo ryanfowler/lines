@@ -67,16 +67,8 @@ pub fn visit_path_parallel(
                 let Some(ext_str) = ext.to_str() else {
                     return WalkState::Continue;
                 };
-                let ext_bytes = ext_str.as_bytes();
-                let mut lower_buf = [0u8; 16];
-                if ext_bytes.len() > lower_buf.len() {
-                    return WalkState::Continue;
-                }
-                lower_buf[..ext_bytes.len()].copy_from_slice(ext_bytes);
-                lower_buf[..ext_bytes.len()].make_ascii_lowercase();
-                let lower_ext =
-                    unsafe { std::str::from_utf8_unchecked(&lower_buf[..ext_bytes.len()]) };
-                let Some(language) = lang::get_language(lower_ext) else {
+                let lower_ext = ext_str.to_ascii_lowercase();
+                let Some(language) = lang::get_language(&lower_ext) else {
                     return WalkState::Continue;
                 };
                 match lines_in_file(path, &mut buf) {

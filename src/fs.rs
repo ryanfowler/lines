@@ -44,7 +44,7 @@ pub fn visit_path_parallel(
         .build_parallel()
         .run(|| {
             let patterns = Arc::clone(&compiled_patterns);
-            let mut buf = [0u8; 1 << 15];
+            let mut buf = [0u8; 1 << 18]; // 256 KiB
             let mut map = Map {
                 s: ch_s.clone(),
                 map: FxHashMap::default(),

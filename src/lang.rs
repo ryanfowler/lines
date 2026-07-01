@@ -165,7 +165,7 @@ impl serde::Serialize for Language {
 
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "{}", self.as_str())
     }
 }
 

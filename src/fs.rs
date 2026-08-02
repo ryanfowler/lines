@@ -24,6 +24,7 @@ use crossbeam::channel::{Sender, unbounded};
 use ignore::{WalkBuilder, WalkState};
 use regex::Regex;
 use rustc_hash::FxHashMap;
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
@@ -40,11 +41,11 @@ pub fn visit_path_parallel(
     let (ch_s, ch_r) = unbounded();
 
     WalkBuilder::new(path)
-        .threads(std::thread::available_parallelism().map_or(1, |v| v.get()) + 1)
+        .threads(std::thread::available_parallelism().map_or(1, |v| v.get()))
         .build_parallel()
         .run(|| {
             let patterns = Arc::clone(&compiled_patterns);
-            let mut buf = [0u8; 1 << 18]; // 256 KiB
+            let mut buf = vec![0u8; 1 << 18].into_boxed_slice();
             let mut map = Map {
                 s: ch_s.clone(),
                 map: FxHashMap::default(),
@@ -67,7 +68,7 @@ pub fn visit_path_parallel(
                 let Some(ext_str) = ext.to_str() else {
                     return WalkState::Continue;
                 };
-                let lower_ext = ext_str.to_ascii_lowercase();
+                let lower_ext = ext_to_lowercase(ext_str);
                 let Some(language) = lang::get_language(&lower_ext) else {
                     return WalkState::Continue;
                 };
@@ -138,8 +139,23 @@ fn should_exclude_path(path: &Path, exclude_patterns: &[Regex]) -> bool {
     let Some(file_name) = path.file_name() else {
         return false;
     };
-    let file_name = file_name.to_string_lossy();
-    exclude_patterns.iter().any(|p| p.is_match(&file_name))
+    // Non-UTF-8 filenames are not excluded; to_string_lossy() would have produced
+    // replacement characters that make regex matching unreliable and misleading.
+    let Some(file_name) = file_name.to_str() else {
+        return false;
+    };
+    exclude_patterns.iter().any(|p| p.is_match(file_name))
+}
+
+/// Convert an extension to lowercase, only allocating when uppercase bytes are present.
+/// Most extensions are already lowercase, so this avoids allocation in the common case.
+fn ext_to_lowercase<'a>(s: &'a str) -> Cow<'a, str> {
+    for b in s.bytes() {
+        if b.is_ascii_uppercase() {
+            return Cow::Owned(s.to_ascii_lowercase());
+        }
+    }
+    Cow::Borrowed(s)
 }
 
 fn map_to_vec(map: FxHashMap<lang::Language, LangResult>) -> Vec<cli::LangOut> {
@@ -183,9 +199,11 @@ impl LangResult {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
     use std::io::Cursor;
+    use std::path::Path;
 
-    use super::lines_in_reader;
+    use super::{ext_to_lowercase, lines_in_reader, should_exclude_path};
 
     #[test]
     fn test_empty() {
@@ -212,5 +230,46 @@ mod tests {
         let mut buf = [0u8; 1 << 10];
         let res = lines_in_reader(cursor, &mut buf).unwrap();
         assert_eq!(res, 4);
+    }
+
+    #[test]
+    fn test_ext_to_lowercase_already_lower() {
+        let result = ext_to_lowercase("rs");
+        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_eq!(result, "rs");
+    }
+
+    #[test]
+    fn test_ext_to_lowercase_needs_lowering() {
+        let result = ext_to_lowercase("RS");
+        assert!(matches!(result, Cow::Owned(_)));
+        assert_eq!(result, "rs");
+    }
+
+    #[test]
+    fn test_ext_to_lowercase_empty() {
+        let result = ext_to_lowercase("");
+        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_ext_to_lowercase_mixed_case() {
+        let result = ext_to_lowercase("Jsx");
+        assert!(matches!(result, Cow::Owned(_)));
+        assert_eq!(result, "jsx");
+    }
+
+    #[test]
+    fn test_should_exclude_path_matches() {
+        let patterns = vec![regex::Regex::new(r"\.git").unwrap()];
+        assert!(should_exclude_path(Path::new(".git"), &patterns));
+        assert!(!should_exclude_path(Path::new("main.rs"), &patterns));
+    }
+
+    #[test]
+    fn test_should_exclude_path_no_filename() {
+        let patterns: Vec<regex::Regex> = vec![];
+        assert!(!should_exclude_path(Path::new("/"), &patterns));
     }
 }

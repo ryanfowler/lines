@@ -26,14 +26,6 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
-use tabled::{
-    Table, Tabled,
-    settings::{
-        Alignment, Modify, Style,
-        object::{Columns, Rows},
-        style::Border,
-    },
-};
 
 use crate::lang;
 
@@ -106,48 +98,205 @@ fn write_json_pretty(out: &Output) {
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
 }
 
-#[derive(Tabled)]
 struct Row {
-    #[tabled(rename = "Language")]
     language: &'static str,
-    #[tabled(rename = "Files")]
     files: String,
-    #[tabled(rename = "Lines")]
     lines: String,
 }
 
 fn write_table(out: &Output) {
-    let mut data = Vec::new();
+    println!("{}", format_table(out));
+
+    if let Some(elapsed_ms) = out.elapsed_ms {
+        println!("\nTook: {elapsed_ms}ms");
+    }
+}
+
+fn format_table(out: &Output) -> String {
+    let mut rows = Vec::new();
     for lang in &out.languages {
-        data.push(Row {
+        rows.push(Row {
             language: lang.language.as_str(),
             files: lang.num_files.to_formatted_string(&Locale::en),
             lines: lang.num_lines.to_formatted_string(&Locale::en),
         });
     }
 
-    if out.languages.len() != 1 {
-        data.push(Row {
+    let has_total = out.languages.len() != 1;
+    if has_total {
+        rows.push(Row {
             language: "Total",
             files: out.total_num_files.to_formatted_string(&Locale::en),
             lines: out.total_num_lines.to_formatted_string(&Locale::en),
         });
     }
 
-    let mut table = Table::new(&data);
-    table
-        .with(Style::psql())
-        .with(Modify::new(Columns::first()).with(Alignment::left()))
-        .with(Modify::new(Columns::new(1..=2)).with(Alignment::right()))
-        .with(Modify::new(Rows::first()).with(Alignment::left()));
+    let widths = [
+        column_width("Language", rows.iter().map(|row| row.language)),
+        column_width("Files", rows.iter().map(|row| row.files.as_str())),
+        column_width("Lines", rows.iter().map(|row| row.lines.as_str())),
+    ];
 
-    if out.languages.len() != 1 {
-        table.with(Modify::new(Rows::last()).with(Border::new().top('-')));
+    let mut output = vec![format_header(&widths), format_separator(&widths, '+')];
+    for (index, row) in rows.iter().enumerate() {
+        if has_total && index == rows.len() - 1 {
+            output.push(format_separator(&widths, ' '));
+        }
+        output.push(format_row(row, &widths));
     }
 
-    println!("{table}");
+    output.join("\n")
+}
 
-    if let Some(elapsed_ms) = out.elapsed_ms {
-        println!("\nTook: {elapsed_ms}ms");
+fn column_width<'a>(header: &'a str, values: impl Iterator<Item = &'a str>) -> usize {
+    values
+        .map(display_width)
+        .chain(std::iter::once(display_width(header)))
+        .max()
+        .unwrap_or(0)
+        + 2
+}
+
+fn display_width(value: &str) -> usize {
+    value.chars().count()
+}
+
+fn format_header(widths: &[usize; 3]) -> String {
+    [
+        format_left_cell("Language", widths[0]),
+        format_left_cell("Files", widths[1]),
+        format_left_cell("Lines", widths[2]),
+    ]
+    .join("|")
+}
+
+fn format_separator(widths: &[usize; 3], separator: char) -> String {
+    let separator = separator.to_string();
+    [
+        "-".repeat(widths[0]),
+        "-".repeat(widths[1]),
+        "-".repeat(widths[2]),
+    ]
+    .join(&separator)
+}
+
+fn format_row(row: &Row, widths: &[usize; 3]) -> String {
+    [
+        format_left_cell(row.language, widths[0]),
+        format_right_cell(&row.files, widths[1]),
+        format_right_cell(&row.lines, widths[2]),
+    ]
+    .join("|")
+}
+
+fn format_left_cell(value: &str, width: usize) -> String {
+    format!(" {value}{} ", " ".repeat(width - display_width(value) - 2),)
+}
+
+fn format_right_cell(value: &str, width: usize) -> String {
+    format!(" {}{value} ", " ".repeat(width - display_width(value) - 2),)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_table_aligns_rows_and_total() {
+        let output = Output {
+            languages: vec![
+                LangOut {
+                    language: lang::Language::Rust,
+                    num_files: 12,
+                    num_lines: 123,
+                },
+                LangOut {
+                    language: lang::Language::Markdown,
+                    num_files: 3,
+                    num_lines: 45,
+                },
+            ],
+            total_num_files: 15,
+            total_num_lines: 168,
+            elapsed_ms: None,
+        };
+
+        assert_eq!(
+            format_table(&output),
+            concat!(
+                " Language | Files | Lines \n",
+                "----------+-------+-------\n",
+                " Rust     |    12 |   123 \n",
+                " Markdown |     3 |    45 \n",
+                "---------- ------- -------\n",
+                " Total    |    15 |   168 ",
+            )
+        );
+    }
+
+    #[test]
+    fn format_table_omits_total_for_one_language() {
+        let output = Output {
+            languages: vec![LangOut {
+                language: lang::Language::Rust,
+                num_files: 1,
+                num_lines: 9,
+            }],
+            total_num_files: 1,
+            total_num_lines: 9,
+            elapsed_ms: Some(7),
+        };
+
+        assert_eq!(
+            format_table(&output),
+            concat!(
+                " Language | Files | Lines \n",
+                "----------+-------+-------\n",
+                " Rust     |     1 |     9 ",
+            )
+        );
+    }
+
+    #[test]
+    fn format_table_handles_no_languages() {
+        let output = Output {
+            languages: Vec::new(),
+            total_num_files: 0,
+            total_num_lines: 0,
+            elapsed_ms: None,
+        };
+
+        assert_eq!(
+            format_table(&output),
+            concat!(
+                " Language | Files | Lines \n",
+                "----------+-------+-------\n",
+                "---------- ------- -------\n",
+                " Total    |     0 |     0 ",
+            )
+        );
+    }
+
+    #[test]
+    fn format_table_handles_large_formatted_numbers() {
+        let output = Output {
+            languages: vec![LangOut {
+                language: lang::Language::Rust,
+                num_files: 1_234_567,
+                num_lines: 987_654_321,
+            }],
+            total_num_files: 1_234_567,
+            total_num_lines: 987_654_321,
+            elapsed_ms: None,
+        };
+
+        assert_eq!(
+            format_table(&output),
+            concat!(
+                " Language | Files     | Lines       \n",
+                "----------+-----------+-------------\n",
+                " Rust     | 1,234,567 | 987,654,321 ",
+            )
+        );
     }
 }

@@ -79,7 +79,7 @@ pub fn visit_path_parallel(
                         counter.line_cnt += lines;
                     }
                     Err(err) => {
-                        eprintln!("Error: {:?}: {}", &path, err);
+                        eprintln!("Error: {:?}: {}", path, err);
                     }
                 }
                 WalkState::Continue
